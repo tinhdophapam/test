@@ -754,17 +754,33 @@ class AudioPlayer {
         }
 
         try {
-            // For iOS, we need to get the direct download URL
-            // GitHub redirects to a CDN URL which works better on iOS
+            // iOS Safari has strict CORS and audio loading requirements
+            // We need to use GET method with mode: 'cors' and proper credentials
+            // This will follow redirects and give us the final CDN URL
+
+            // First, try to fetch with proper CORS settings
             const response = await fetch(url, {
-                method: 'HEAD',
-                redirect: 'follow'
+                method: 'GET',
+                mode: 'cors',
+                credentials: 'omit',
+                redirect: 'follow',
+                headers: {
+                    'Range': 'bytes=0-1' // Request only first 2 bytes to minimize data transfer
+                }
             });
-            
-            // Return the final URL after redirects
-            return response.url;
+
+            if (response.ok) {
+                // Get the final URL after redirects (this is the CDN URL)
+                const finalUrl = response.url;
+                console.log('Resolved GitHub URL to CDN:', finalUrl);
+                return finalUrl;
+            } else {
+                console.warn('GitHub URL fetch failed, using original URL');
+                return url;
+            }
         } catch (error) {
             console.warn('Failed to resolve GitHub URL, using original:', error);
+            // Fallback: return original URL
             return url;
         }
     }
@@ -804,12 +820,12 @@ class AudioPlayer {
         try {
             // Resolve GitHub URL if needed (for iOS compatibility)
             let audioUrl = track.url;
-            
+
             // Check if it's a GitHub release URL
             if (audioUrl.includes('github.com') && audioUrl.includes('/releases/download/')) {
-                console.log('Resolving GitHub URL for iOS...');
+                console.log('Detected GitHub release URL, resolving for iOS...');
                 audioUrl = await this.resolveGitHubUrl(audioUrl);
-                console.log('Resolved URL:', audioUrl);
+                console.log('Resolved to CDN URL:', audioUrl);
             } else {
                 // Normalize URL for other sources
                 audioUrl = this.normalizeAudioUrl(audioUrl);
@@ -817,20 +833,66 @@ class AudioPlayer {
 
             console.log('Playing URL:', audioUrl);
 
-            // For iOS Safari compatibility: load audio first, then play
-            this.audio.src = audioUrl;
-            this.audio.load(); // Explicitly load the audio
-            
+            // Update UI first
             this.trackTitle.textContent = track.title;
             this.trackFolder.textContent = `${track.folder} • ${track.subfolder}`;
 
-            // Use a promise chain for better iOS compatibility
+            // iOS Safari specific handling
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+            if (isIOS) {
+                // For iOS: Stop current audio first, then set new source
+                this.audio.pause();
+                this.audio.currentTime = 0;
+
+                // Remove old source
+                this.audio.removeAttribute('src');
+                this.audio.load();
+
+                // Set new source with a small delay for iOS
+                await new Promise(resolve => setTimeout(resolve, 50));
+                this.audio.src = audioUrl;
+
+                // Explicitly load
+                this.audio.load();
+
+                // Wait for loadedmetadata before playing
+                await new Promise((resolve, reject) => {
+                    const loadedHandler = () => {
+                        this.audio.removeEventListener('loadedmetadata', loadedHandler);
+                        this.audio.removeEventListener('error', errorHandler);
+                        resolve();
+                    };
+                    const errorHandler = (e) => {
+                        this.audio.removeEventListener('loadedmetadata', loadedHandler);
+                        this.audio.removeEventListener('error', errorHandler);
+                        reject(e);
+                    };
+
+                    this.audio.addEventListener('loadedmetadata', loadedHandler, { once: true });
+                    this.audio.addEventListener('error', errorHandler, { once: true });
+
+                    // Timeout after 10 seconds
+                    setTimeout(() => {
+                        this.audio.removeEventListener('loadedmetadata', loadedHandler);
+                        this.audio.removeEventListener('error', errorHandler);
+                        reject(new Error('Timeout loading audio'));
+                    }, 10000);
+                });
+            } else {
+                // For other browsers: standard approach
+                this.audio.src = audioUrl;
+                this.audio.load();
+            }
+
+            // Try to play
             const playPromise = this.audio.play();
-            
+
             if (playPromise !== undefined) {
                 playPromise.then(() => {
                     // Audio is playing successfully
                     console.log('Audio playing successfully');
+                    this.hideError(); // Hide any previous errors
                 }).catch(error => {
                     console.error('Play error:', error);
                     // For iOS, show a more helpful error message
@@ -838,6 +900,8 @@ class AudioPlayer {
                         this.showError('Vui lòng nhấn nút phát để bắt đầu');
                     } else if (error.name === 'NotSupportedError') {
                         this.showError('Định dạng audio không được hỗ trợ trên thiết bị này');
+                    } else if (error.message.includes('Timeout')) {
+                        this.showError('Không thể tải audio. Vui lòng thử lại hoặc kiểm tra kết nối mạng');
                     } else {
                         this.showError('Không thể phát audio: ' + error.message);
                     }
@@ -854,21 +918,21 @@ class AudioPlayer {
         this.addToRecentlyPlayed(track);
         this.updateQueue();
         this.saveState();
-        
+
         // Update Now Playing section
         this.updateNowPlaying(track);
-        
+
         // Start tracking listen time
         this.sessionStartTime = Date.now();
-        
+
         // Add playing animation to album art
         const albumArt = document.querySelector('.album-art-inner');
         if (albumArt) albumArt.classList.add('playing');
-        
+
         // Update mini player
         this.updateMiniPlayer(track);
         this.showMiniPlayer();
-        
+
         // Update Media Session API for background playback
         this.updateMediaSession(track);
     }
@@ -1901,6 +1965,10 @@ class AudioPlayer {
         setTimeout(() => {
             this.errorMessage.style.display = 'none';
         }, 5000);
+    }
+
+    hideError() {
+        this.errorMessage.style.display = 'none';
     }
 
     showBackupError() {
