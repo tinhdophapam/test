@@ -3868,7 +3868,8 @@ kbd {
     border: 1px solid transparent;
 }
 
-.mobile-more-item:hover, .mobile-more-item:active {
+.mobile-more-item:hover,
+.mobile-more-item:active {
     background: rgba(255, 149, 0, 0.1);
     border-color: var(--accent);
 }
@@ -3905,4 +3906,44 @@ kbd {
 .mobile-more-value {
     font-size: 0.85rem;
     color: var(--text-secondary);
+}
+
+/* Quick Scroll Button */
+.quick-scroll-btn {
+    position: fixed;
+    bottom: 80px;
+    /* Above bottom nav */
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(255, 149, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    z-index: 900;
+    cursor: pointer;
+    transition: all var(--transition);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px);
+}
+
+.quick-scroll-btn.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.quick-scroll-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(255, 149, 0, 0.5);
+}
+
+.quick-scroll-btn:active {
+    transform: translateY(0);
 }

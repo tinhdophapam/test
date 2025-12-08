@@ -65,6 +65,7 @@ class AudioPlayer {
         this.mobileRepeatValue = document.getElementById('mobileRepeatValue');
         this.mobileSpeedValue = document.getElementById('mobileSpeedValue');
         this.mobileTimerValue = document.getElementById('mobileTimerValue');
+        this.quickScrollBtn = document.getElementById('quickScrollBtn');
         this.miniPrevBtn = document.getElementById('miniPrevBtn');
         this.miniPlayBtn = document.getElementById('miniPlayBtn');
         this.miniNextBtn = document.getElementById('miniNextBtn');
@@ -1139,16 +1140,57 @@ class AudioPlayer {
     }
 
     // ===== Update Active Track Highlight =====
+    // ===== Update Active Track Highlight =====
     updateActiveTrack() {
-        // Active state is now handled during rendering
-        // This method is kept for backward compatibility
+        // Remove active class from all potential items
+        document.querySelectorAll('.track-card.active, .custom-playlist-item.active, .history-card.active, .queue-item.active, .queue-item.playing').forEach(el => {
+            el.classList.remove('active');
+            el.classList.remove('playing');
+
+            // Reset icons
+            const icon = el.querySelector('.track-card-icon i, .custom-playlist-item-icon i, .history-card-icon i');
+            if (icon) {
+                if (el.classList.contains('history-card')) icon.className = 'fas fa-history';
+                else icon.className = 'fas fa-music';
+            }
+
+            // Remove queue item specific icon
+            if (el.className.includes('queue-item')) {
+                const queueIcon = el.querySelector('.queue-item-info + i');
+                if (queueIcon) queueIcon.remove();
+            }
+        });
+
+        if (this.currentIndex === -1) {
+            if (this.quickScrollBtn) this.quickScrollBtn.classList.remove('show');
+            return;
+        }
+
+        // Show quick scroll button
+        if (this.quickScrollBtn) this.quickScrollBtn.classList.add('show');
+
+        // Add active class to matching items
+        const activeElements = document.querySelectorAll(`[data-index="${this.currentIndex}"]`);
+        activeElements.forEach(el => {
+            el.classList.add('active');
+            if (el.className.includes('queue-item')) el.classList.add('playing');
+
+            // Update icons
+            const icon = el.querySelector('.track-card-icon i, .custom-playlist-item-icon i, .history-card-icon i');
+            if (icon) icon.className = 'fas fa-volume-up';
+
+            // Add queue item icon if missing
+            if (el.className.includes('queue-item') && !el.querySelector('.queue-item-info + i')) {
+                el.insertAdjacentHTML('beforeend', '<i class="fas fa-volume-up"></i>');
+            }
+        });
     }
 
     // ===== Scroll to Active Track =====
     scrollToActiveTrack() {
-        const activeTrack = document.querySelector('.track-item.active');
-        if (activeTrack) {
-            activeTrack.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const activeElement = document.querySelector('.track-card.active, .custom-playlist-item.active, .history-card.active, .queue-item.playing');
+        if (activeElement) {
+            activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }
 
@@ -1800,6 +1842,7 @@ class AudioPlayer {
 
                 const trackCard = document.createElement('div');
                 trackCard.className = `track-card ${isActive ? 'active' : ''}`;
+                trackCard.setAttribute('data-index', flatIndex);
                 trackCard.innerHTML = `
                     <div class="track-card-icon">
                         <i class="fas ${isActive ? 'fa-volume-up' : 'fa-music'}"></i>
@@ -1831,6 +1874,12 @@ class AudioPlayer {
 
                 container.appendChild(trackCard);
             });
+
+            // Auto scroll to active track if in this folder
+            setTimeout(() => {
+                const activeCard = container.querySelector('.track-card.active');
+                if (activeCard) this.scrollToActiveTrack();
+            }, 100);
         }
     }
 
@@ -1978,6 +2027,7 @@ class AudioPlayer {
 
                 const itemEl = document.createElement('div');
                 itemEl.className = `custom-playlist-item ${isActive ? 'active' : ''}`;
+                itemEl.setAttribute('data-index', flatIndex);
                 itemEl.innerHTML = `
                     <div class="custom-playlist-item-icon">
                         <i class="fas ${isActive ? 'fa-volume-up' : 'fa-music'}"></i>
@@ -2064,6 +2114,7 @@ class AudioPlayer {
 
                 const itemEl = document.createElement('div');
                 itemEl.className = `custom-playlist-item ${isActive ? 'active' : ''}`;
+                itemEl.setAttribute('data-index', flatIndex);
                 itemEl.innerHTML = `
                     <div class="custom-playlist-item-icon">
                         <i class="fas ${isActive ? 'fa-volume-up' : 'fa-music'}"></i>
@@ -2121,6 +2172,7 @@ class AudioPlayer {
 
             const historyCard = document.createElement('div');
             historyCard.className = 'history-card';
+            historyCard.setAttribute('data-index', flatIndex);
             historyCard.innerHTML = `
                 <div class="history-card-icon">
                     <i class="fas fa-history"></i>
@@ -2452,6 +2504,12 @@ class AudioPlayer {
         if (this.mobileMoreTimer) {
             this.mobileMoreTimer.addEventListener('click', () => this.cycleTimer());
         }
+
+        // Quick Scroll Button
+        if (this.quickScrollBtn) {
+            this.quickScrollBtn.addEventListener('click', () => this.scrollToActiveTrack());
+        }
+
         if (this.miniPrevBtn) {
             this.miniPrevBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
