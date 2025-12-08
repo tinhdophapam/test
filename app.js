@@ -55,7 +55,16 @@ class AudioPlayer {
 
         // Mini Player Elements
         this.miniPlayer = document.getElementById('miniPlayer');
-        this.miniRepeatBtn = document.getElementById('miniRepeatBtn');
+        this.miniMoreBtn = document.getElementById('miniMoreBtn');
+        this.mobileMoreMenu = document.getElementById('mobileMoreMenu');
+        this.mobileMoreMenuOverlay = document.getElementById('mobileMoreMenuOverlay');
+        this.closeMobileMore = document.getElementById('closeMobileMore');
+        this.mobileMoreRepeat = document.getElementById('mobileMoreRepeat');
+        this.mobileMoreSpeed = document.getElementById('mobileMoreSpeed');
+        this.mobileMoreTimer = document.getElementById('mobileMoreTimer');
+        this.mobileRepeatValue = document.getElementById('mobileRepeatValue');
+        this.mobileSpeedValue = document.getElementById('mobileSpeedValue');
+        this.mobileTimerValue = document.getElementById('mobileTimerValue');
         this.miniPrevBtn = document.getElementById('miniPrevBtn');
         this.miniPlayBtn = document.getElementById('miniPlayBtn');
         this.miniNextBtn = document.getElementById('miniNextBtn');
@@ -349,6 +358,17 @@ class AudioPlayer {
 
             // Show toast
             this.showToast(`Hẹn giờ tắt sau ${minutes} phút`, 'success');
+        }
+
+        // Update Mobile More Menu
+        if (this.mobileTimerValue) {
+            if (minutes === 0) {
+                this.mobileTimerValue.textContent = 'Tắt';
+                this.mobileTimerValue.classList.remove('active');
+            } else {
+                this.mobileTimerValue.textContent = `${minutes} phút`;
+                this.mobileTimerValue.classList.add('active');
+            }
         }
     }
 
@@ -1243,6 +1263,16 @@ class AudioPlayer {
                 btn.classList.add('active');
             }
         });
+
+        // Update Mobile More Menu
+        if (this.mobileSpeedValue) {
+            this.mobileSpeedValue.textContent = `${speed}x`;
+            if (speed !== 1) {
+                this.mobileSpeedValue.classList.add('active');
+            } else {
+                this.mobileSpeedValue.classList.remove('active');
+            }
+        }
 
         localStorage.setItem('playbackSpeed', speed);
         this.speedMenu.classList.remove('show');
@@ -2391,11 +2421,36 @@ class AudioPlayer {
         // }
 
         // Mini Player Controls
-        if (this.miniRepeatBtn) {
-            this.miniRepeatBtn.addEventListener('click', (e) => {
+        // Mobile More Menu
+        if (this.miniMoreBtn) {
+            this.miniMoreBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.toggleRepeat();
+                this.toggleMobileMoreMenu();
             });
+        }
+
+        if (this.mobileMoreMenuOverlay) {
+            this.mobileMoreMenuOverlay.addEventListener('click', () => {
+                this.toggleMobileMoreMenu();
+            });
+        }
+
+        if (this.closeMobileMore) {
+            this.closeMobileMore.addEventListener('click', () => {
+                this.toggleMobileMoreMenu();
+            });
+        }
+
+        if (this.mobileMoreRepeat) {
+            this.mobileMoreRepeat.addEventListener('click', () => this.toggleRepeat());
+        }
+
+        if (this.mobileMoreSpeed) {
+            this.mobileMoreSpeed.addEventListener('click', () => this.cycleSpeed());
+        }
+
+        if (this.mobileMoreTimer) {
+            this.mobileMoreTimer.addEventListener('click', () => this.cycleTimer());
         }
         if (this.miniPrevBtn) {
             this.miniPrevBtn.addEventListener('click', (e) => {
@@ -2707,6 +2762,27 @@ class AudioPlayer {
             }
         }
 
+        // Update Mobile More Menu
+        if (this.mobileRepeatValue) {
+            let text = 'Tắt';
+            let active = false;
+
+            if (this.repeatMode === 'one') {
+                text = '1 bài';
+                active = true;
+            } else if (this.repeatMode === 'all') {
+                text = 'Tất cả';
+                active = true;
+            }
+
+            this.mobileRepeatValue.textContent = text;
+            if (active) {
+                this.mobileRepeatValue.classList.add('active');
+            } else {
+                this.mobileRepeatValue.classList.remove('active');
+            }
+        }
+
         localStorage.setItem('repeatMode', this.repeatMode);
     }
 
@@ -2931,6 +3007,36 @@ class AudioPlayer {
         } else if (this.repeatMode === 'all') {
             this.playTrack(0);
         }
+    }
+    // ===== Mobile More Menu Logic =====
+    toggleMobileMoreMenu() {
+        if (this.mobileMoreMenuOverlay) this.mobileMoreMenuOverlay.classList.toggle('show');
+        if (this.mobileMoreMenu) this.mobileMoreMenu.classList.toggle('show');
+    }
+
+    cycleSpeed() {
+        const currentSpeed = this.audio.playbackRate;
+        // Speeds: 1.0 -> 1.25 -> 1.5 -> 2.0 -> 0.75 -> 1.0
+        let nextSpeed = 1.0;
+        if (currentSpeed === 1.0) nextSpeed = 1.25;
+        else if (currentSpeed === 1.25) nextSpeed = 1.5;
+        else if (currentSpeed === 1.5) nextSpeed = 2.0;
+        else if (currentSpeed === 2.0) nextSpeed = 0.75;
+        else nextSpeed = 1.0;
+
+        this.setSpeed(nextSpeed);
+    }
+
+    cycleTimer() {
+        // Timers: 0 (Off) -> 15 -> 30 -> 60 -> 0
+        const currentTimer = this.sleepTimerDuration || 0;
+        let nextTimer = 0;
+        if (currentTimer === 0) nextTimer = 15;
+        else if (currentTimer === 15) nextTimer = 30;
+        else if (currentTimer === 30) nextTimer = 60;
+        else nextTimer = 0;
+
+        this.setSleepTimer(nextTimer);
     }
 }
 

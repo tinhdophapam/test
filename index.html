@@ -451,8 +451,8 @@
             </div>
             <div class="mini-player-content" id="miniPlayerContent">
                 <div class="mini-player-info">
-                    <button class="mini-album-art" id="miniRepeatBtn" title="Repeat">
-                        <i class="fas fa-redo"></i>
+                    <button class="mini-album-art" id="miniMoreBtn" title="More Options">
+                        <i class="fas fa-ellipsis-v"></i>
                     </button>
                     <div class="mini-track-info">
                         <div class="mini-track-title" id="miniTrackTitle">Chọn bài giảng</div>
@@ -478,6 +478,46 @@
             </div>
         </div>
 
+        <!-- Mobile More Menu -->
+        <div class="mobile-more-menu-overlay" id="mobileMoreMenuOverlay"></div>
+        <div class="mobile-more-menu" id="mobileMoreMenu">
+            <div class="mobile-more-header">
+                <h3>Tùy chọn</h3>
+                <button class="close-mobile-more" id="closeMobileMore">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="mobile-more-content">
+                <button class="mobile-more-item" id="mobileMoreRepeat">
+                    <div class="mobile-more-icon">
+                        <i class="fas fa-redo"></i>
+                    </div>
+                    <div class="mobile-more-info">
+                        <span class="mobile-more-label">Lặp lại</span>
+                        <span class="mobile-more-value" id="mobileRepeatValue">Tắt</span>
+                    </div>
+                </button>
+                <button class="mobile-more-item" id="mobileMoreSpeed">
+                    <div class="mobile-more-icon">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <div class="mobile-more-info">
+                        <span class="mobile-more-label">Tốc độ</span>
+                        <span class="mobile-more-value" id="mobileSpeedValue">1.0x</span>
+                    </div>
+                </button>
+                <button class="mobile-more-item" id="mobileMoreTimer">
+                    <div class="mobile-more-icon">
+                        <i class="fas fa-stopwatch"></i>
+                    </div>
+                    <div class="mobile-more-info">
+                        <span class="mobile-more-label">Hẹn giờ tắt</span>
+                        <span class="mobile-more-value" id="mobileTimerValue">Tắt</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+
         <!-- Bottom Navigation Bar (Mobile) -->
         <div class="bottom-nav" id="bottomNav">
             <button class="nav-item" data-nav="playlist">
@@ -487,10 +527,6 @@
             <button class="nav-item" data-nav="library">
                 <i class="fas fa-book"></i>
                 <span>Thư viện</span>
-            </button>
-            <button class="nav-item" data-nav="bookmarks">
-                <i class="fas fa-bookmark"></i>
-                <span>Ghi chú</span>
             </button>
             <button class="nav-item" data-nav="history">
                 <i class="fas fa-history"></i>
