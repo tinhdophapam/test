@@ -1403,60 +1403,66 @@ class AudioPlayer {
     // ===== Media Session API for Background Playback =====
     updateMediaSession(track) {
         if ('mediaSession' in navigator) {
+            const getAbsoluteUrl = (path) => {
+                return new URL(path, window.location.href).href;
+            };
+
+            const artwork = [
+                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '512x512', type: 'image/webp' },
+                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '256x256', type: 'image/webp' },
+                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '128x128', type: 'image/webp' }
+            ];
+
             // Set metadata for notification
             navigator.mediaSession.metadata = new MediaMetadata({
-                title: track.title,
-                artist: track.teacher || track.folder,
+                title: track.title || 'Bài giảng',
+                artist: track.teacher || track.folder || 'Tịnh Độ Pháp Âm',
                 album: track.subfolder || 'Tịnh Độ Pháp Âm',
-                artwork: [
-                    { src: 'Title Logo.webp', sizes: '512x512', type: 'image/webp' },
-                    { src: 'Title Logo.webp', sizes: '256x256', type: 'image/webp' },
-                    { src: 'Title Logo.webp', sizes: '128x128', type: 'image/webp' }
-                ]
+                artwork: artwork
             });
 
             // Set initial playback state
             navigator.mediaSession.playbackState = this.audio.paused ? 'paused' : 'playing';
 
             // Set up action handlers for media controls
-            navigator.mediaSession.setActionHandler('play', () => {
-                this.audio.play();
-            });
+            const actionHandlers = [
+                ['play', () => this.audio.play()],
+                ['pause', () => this.audio.pause()],
+                ['previoustrack', () => this.prevTrack()],
+                ['nexttrack', () => this.nextTrack()],
+                ['seekbackward', (details) => {
+                    const skipTime = details.seekOffset || 10;
+                    this.audio.currentTime = Math.max(0, this.audio.currentTime - skipTime);
+                }],
+                ['seekforward', (details) => {
+                    const skipTime = details.seekOffset || 10;
+                    this.audio.currentTime = Math.min(this.audio.duration, this.audio.currentTime + skipTime);
+                }],
+                ['seekto', (details) => {
+                    if (details.fastSeek && 'fastSeek' in this.audio) {
+                        this.audio.fastSeek(details.seekTime);
+                    } else {
+                        this.audio.currentTime = details.seekTime;
+                    }
+                }]
+            ];
 
-            navigator.mediaSession.setActionHandler('pause', () => {
-                this.audio.pause();
-            });
-
-            navigator.mediaSession.setActionHandler('previoustrack', () => {
-                this.prevTrack();
-            });
-
-            navigator.mediaSession.setActionHandler('nexttrack', () => {
-                this.nextTrack();
-            });
-
-            navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-                const skipTime = details.seekOffset || 10;
-                this.audio.currentTime = Math.max(0, this.audio.currentTime - skipTime);
-            });
-
-            navigator.mediaSession.setActionHandler('seekforward', (details) => {
-                const skipTime = details.seekOffset || 10;
-                this.audio.currentTime = Math.min(this.audio.duration, this.audio.currentTime + skipTime);
-            });
-
-            navigator.mediaSession.setActionHandler('seekto', (details) => {
-                if (details.fastSeek && 'fastSeek' in this.audio) {
-                    this.audio.fastSeek(details.seekTime);
-                } else {
-                    this.audio.currentTime = details.seekTime;
+            actionHandlers.forEach(([action, handler]) => {
+                try {
+                    navigator.mediaSession.setActionHandler(action, handler);
+                } catch (error) {
+                    console.warn(`The media session action "${action}" is not supported yet.`);
                 }
             });
 
             // Update position state when metadata loads
-            this.audio.addEventListener('loadedmetadata', () => {
+            if (this.audio.readyState >= 1) {
                 this.updateMediaSessionPositionState();
-            }, { once: true });
+            } else {
+                this.audio.addEventListener('loadedmetadata', () => {
+                    this.updateMediaSessionPositionState();
+                }, { once: true });
+            }
         }
     }
 
