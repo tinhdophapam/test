@@ -1400,84 +1400,161 @@ class AudioPlayer {
         }
     }
 
-    // ===== Media Session API for Background Playback =====
+    // ===== Media Session API for Lock Screen & Background Playback =====
+    // Modern implementation with enhanced artwork and metadata
     updateMediaSession(track) {
-        if ('mediaSession' in navigator) {
+        if (!('mediaSession' in navigator)) {
+            console.warn('Media Session API not supported in this browser');
+            return;
+        }
+
+        try {
+            // Helper: Get absolute URL for assets
             const getAbsoluteUrl = (path) => {
                 return new URL(path, window.location.href).href;
             };
 
+            // Enhanced artwork with multiple sizes for better quality on all devices
+            // Includes high-res options for modern displays (up to 1024x1024)
             const artwork = [
+                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '1024x1024', type: 'image/webp' },
                 { src: getAbsoluteUrl('Title Logo.webp'), sizes: '512x512', type: 'image/webp' },
+                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '384x384', type: 'image/webp' },
                 { src: getAbsoluteUrl('Title Logo.webp'), sizes: '256x256', type: 'image/webp' },
-                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '128x128', type: 'image/webp' }
+                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '128x128', type: 'image/webp' },
+                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '96x96', type: 'image/webp' }
             ];
 
-            // Set metadata for notification
+            // Set rich metadata for lock screen display
             navigator.mediaSession.metadata = new MediaMetadata({
-                title: track.title || 'Bài giảng',
-                artist: track.teacher || track.folder || 'Tịnh Độ Pháp Âm',
-                album: track.subfolder || 'Tịnh Độ Pháp Âm',
+                title: track.title || 'Bài giảng Phật Pháp',
+                artist: track.teacher || 'Thầy Thích Chân Hiếu',
+                album: track.subfolder || track.folder || 'Tịnh Độ Pháp Âm - Thích Chân Hiếu',
                 artwork: artwork
             });
 
-            // Set initial playback state
+            // Set playback state
             navigator.mediaSession.playbackState = this.audio.paused ? 'paused' : 'playing';
 
-            // Set up action handlers for media controls
-            const actionHandlers = [
-                ['play', () => this.audio.play()],
-                ['pause', () => this.audio.pause()],
-                ['previoustrack', () => this.prevTrack()],
-                ['nexttrack', () => this.nextTrack()],
-                ['seekbackward', (details) => {
-                    const skipTime = details.seekOffset || 10;
-                    this.audio.currentTime = Math.max(0, this.audio.currentTime - skipTime);
-                }],
-                ['seekforward', (details) => {
-                    const skipTime = details.seekOffset || 10;
-                    this.audio.currentTime = Math.min(this.audio.duration, this.audio.currentTime + skipTime);
-                }],
-                ['seekto', (details) => {
+            // Enhanced action handlers with better error handling
+            this.setupMediaSessionActions();
+
+            // Update position state
+            this.schedulePositionStateUpdate();
+
+        } catch (error) {
+            console.error('Error setting up Media Session:', error);
+        }
+    }
+
+    // Setup all media session action handlers
+    setupMediaSessionActions() {
+        if (!('mediaSession' in navigator)) return;
+
+        const actionHandlers = [
+            // Basic playback controls
+            ['play', () => {
+                this.audio.play().catch(err => console.error('Play error:', err));
+            }],
+            ['pause', () => {
+                this.audio.pause();
+            }],
+
+            // Track navigation
+            ['previoustrack', () => {
+                this.prevTrack();
+            }],
+            ['nexttrack', () => {
+                this.nextTrack();
+            }],
+
+            // Seek controls with configurable skip time (default 10s)
+            ['seekbackward', (details) => {
+                const skipTime = details.seekOffset || 10;
+                this.audio.currentTime = Math.max(0, this.audio.currentTime - skipTime);
+                this.updateMediaSessionPositionState();
+            }],
+            ['seekforward', (details) => {
+                const skipTime = details.seekOffset || 10;
+                this.audio.currentTime = Math.min(this.audio.duration, this.audio.currentTime + skipTime);
+                this.updateMediaSessionPositionState();
+            }],
+
+            // Precise seeking
+            ['seekto', (details) => {
+                if (details.seekTime !== null && details.seekTime !== undefined) {
                     if (details.fastSeek && 'fastSeek' in this.audio) {
                         this.audio.fastSeek(details.seekTime);
                     } else {
                         this.audio.currentTime = details.seekTime;
                     }
-                }]
-            ];
-
-            actionHandlers.forEach(([action, handler]) => {
-                try {
-                    navigator.mediaSession.setActionHandler(action, handler);
-                } catch (error) {
-                    console.warn(`The media session action "${action}" is not supported yet.`);
-                }
-            });
-
-            // Update position state when metadata loads
-            if (this.audio.readyState >= 1) {
-                this.updateMediaSessionPositionState();
-            } else {
-                this.audio.addEventListener('loadedmetadata', () => {
                     this.updateMediaSessionPositionState();
-                }, { once: true });
+                }
+            }],
+
+            // Stop action (if supported)
+            ['stop', () => {
+                this.audio.pause();
+                this.audio.currentTime = 0;
+                this.updateMediaSessionPositionState();
+            }]
+        ];
+
+        // Register each action handler with try-catch for compatibility
+        actionHandlers.forEach(([action, handler]) => {
+            try {
+                navigator.mediaSession.setActionHandler(action, handler);
+            } catch (error) {
+                // Some browsers may not support all actions
+                console.debug(`Media Session action "${action}" not supported:`, error.message);
             }
+        });
+    }
+
+    // Schedule position state update when ready
+    schedulePositionStateUpdate() {
+        if (this.audio.readyState >= 1) {
+            // Audio metadata already loaded
+            this.updateMediaSessionPositionState();
+        } else {
+            // Wait for metadata to load
+            this.audio.addEventListener('loadedmetadata', () => {
+                this.updateMediaSessionPositionState();
+            }, { once: true });
         }
     }
 
     // ===== Update Media Session Position State =====
+    // Enhanced with better validation and error handling
     updateMediaSessionPositionState() {
-        if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
-            try {
-                navigator.mediaSession.setPositionState({
-                    duration: this.audio.duration || 0,
-                    playbackRate: this.audio.playbackRate || 1.0,
-                    position: this.audio.currentTime || 0
-                });
-            } catch (error) {
-                console.log('Error updating position state:', error);
+        if (!('mediaSession' in navigator) || !('setPositionState' in navigator.mediaSession)) {
+            return;
+        }
+
+        try {
+            // Validate values before setting
+            const duration = this.audio.duration;
+            const position = this.audio.currentTime;
+            const playbackRate = this.audio.playbackRate;
+
+            // Check for valid values (not NaN or Infinity)
+            if (!isFinite(duration) || !isFinite(position) || !isFinite(playbackRate)) {
+                console.debug('Invalid position state values, skipping update');
+                return;
             }
+
+            // Ensure position doesn't exceed duration
+            const safePosition = Math.min(position, duration);
+
+            navigator.mediaSession.setPositionState({
+                duration: duration || 0,
+                playbackRate: playbackRate || 1.0,
+                position: safePosition || 0
+            });
+
+        } catch (error) {
+            // Position state errors are usually harmless, just log for debugging
+            console.debug('Error updating Media Session position state:', error.message);
         }
     }
 
