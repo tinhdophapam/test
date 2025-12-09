@@ -1187,9 +1187,40 @@ class AudioPlayer {
 
     // ===== Scroll to Active Track =====
     scrollToActiveTrack() {
-        const activeElement = document.querySelector('.track-card.active, .custom-playlist-item.active, .history-card.active, .queue-item.playing');
-        if (activeElement) {
-            activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Priority 1: Try to find active element in currently visible view
+        // Check main content views (library, playlist, history, bookmarks)
+        const activeInMainContent = document.querySelector(
+            '.content-view.active .track-card.active, ' +
+            '.content-view.active .custom-playlist-item.active, ' +
+            '.content-view.active .history-card.active, ' +
+            '.content-view.active .bookmark-card.active'
+        );
+
+        // Priority 2: Check sidebar playlist
+        const activeInSidebar = document.querySelector('.playlist .track-card.active, .playlist .folder-card.active');
+
+        // Priority 3: Check queue panel
+        const activeInQueue = document.querySelector('.queue-item.playing');
+
+        // Scroll to the found element (priority order)
+        const targetElement = activeInMainContent || activeInSidebar || activeInQueue;
+
+        if (targetElement) {
+            targetElement.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'nearest'
+            });
+
+            // Add a subtle highlight animation to show user where it scrolled
+            targetElement.style.transition = 'transform 0.3s ease';
+            targetElement.style.transform = 'scale(1.02)';
+            setTimeout(() => {
+                targetElement.style.transform = 'scale(1)';
+            }, 300);
+        } else {
+            // If no active element found, show a message
+            console.log('Không tìm thấy bài đang phát trong danh sách hiện tại');
         }
     }
 

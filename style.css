@@ -3909,42 +3909,58 @@ kbd {
     color: var(--text-secondary);
 }
 
-/* Quick Scroll Button */
+/* Quick Scroll Button - Nút cuộn nhanh đến bài đang phát */
 .quick-scroll-btn {
     position: fixed;
     bottom: 150px;
     /* Above bottom nav and mini player */
     right: 20px;
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    background: var(--accent);
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent) 0%, #ff6b00 100%);
     color: white;
-    border: none;
-    box-shadow: 0 4px 12px rgba(255, 149, 0, 0.4);
+    border: 3px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 4px 20px rgba(255, 149, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     z-index: 900;
     cursor: pointer;
-    transition: all var(--transition);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     opacity: 0;
     pointer-events: none;
-    transform: translateY(20px);
+    transform: translateY(20px) scale(0.8);
 }
 
 .quick-scroll-btn.show {
     opacity: 1;
     pointer-events: auto;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+    animation: pulseGlow 2s infinite;
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 4px 20px rgba(255, 149, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    50% {
+        box-shadow: 0 4px 25px rgba(255, 149, 0, 0.7), 0 2px 12px rgba(0, 0, 0, 0.3);
+    }
 }
 
 .quick-scroll-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(255, 149, 0, 0.5);
+    transform: translateY(-4px) scale(1.1);
+    box-shadow: 0 6px 28px rgba(255, 149, 0, 0.7), 0 3px 12px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(135deg, #ff6b00 0%, var(--accent) 100%);
 }
 
 .quick-scroll-btn:active {
-    transform: translateY(0);
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 4px 20px rgba(255, 149, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.quick-scroll-btn i {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
