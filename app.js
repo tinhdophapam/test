@@ -1398,34 +1398,52 @@ class AudioPlayer {
         }
 
         try {
-            // Helper: Get absolute URL for assets
+            // Helper: Get absolute URL for assets (iOS compatible)
             const getAbsoluteUrl = (path) => {
-                return new URL(path, window.location.href).href;
+                // iOS Safari prefers full absolute URLs
+                const url = new URL(path, window.location.href);
+                return url.href;
             };
 
-            // Enhanced artwork with multiple sizes optimized for all platforms
-            // - iOS: Prefers 512x512 or 1024x1024 for large lock screen display
-            // - Android: Prefers 512x512 for notification player (optimal quality/size)
-            // - Android also uses 192x192 for collapsed notification (Material Design spec)
-            // - Smaller sizes for older devices and bandwidth optimization
+            // iOS-optimized artwork
+            // iOS Safari is VERY picky about artwork:
+            // 1. Must be absolute URLs
+            // 2. Must be accessible (CORS compliant)
+            // 3. Prefers square images
+            // 4. WebP support varies - include fallback types
+            const artworkUrl = getAbsoluteUrl('Title Logo.webp');
+
             const artwork = [
-                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '1024x1024', type: 'image/webp' },
-                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '512x512', type: 'image/webp' },   // ← Primary for both iOS & Android
-                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '384x384', type: 'image/webp' },
-                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '256x256', type: 'image/webp' },
-                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '192x192', type: 'image/webp' },   // ← Android Material Design
-                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '128x128', type: 'image/webp' },
-                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '96x96', type: 'image/webp' },
-                { src: getAbsoluteUrl('Title Logo.webp'), sizes: '72x72', type: 'image/webp' }      // ← Low-end devices
+                // iOS prefers these sizes for lock screen (high quality)
+                { src: artworkUrl, sizes: '512x512', type: 'image/webp' },
+                { src: artworkUrl, sizes: '1024x1024', type: 'image/webp' },
+                { src: artworkUrl, sizes: '384x384', type: 'image/webp' },
+                { src: artworkUrl, sizes: '256x256', type: 'image/webp' },
+                { src: artworkUrl, sizes: '192x192', type: 'image/webp' },
+                { src: artworkUrl, sizes: '128x128', type: 'image/webp' },
+                { src: artworkUrl, sizes: '96x96', type: 'image/webp' }
             ];
 
-            // Set rich metadata for lock screen display
+            console.log('🎨 Artwork URL:', artworkUrl);
+
+            // Set rich metadata for lock screen display (iOS optimized)
+            // iOS Safari requires all fields to be non-empty strings
+            const title = (track.title && track.title.trim()) || 'Bài giảng Phật Pháp';
+            const artist = (track.teacher && track.teacher.trim()) ||
+                          (track.folder && track.folder.trim()) ||
+                          'Thầy Thích Chân Hiếu';
+            const album = (track.subfolder && track.subfolder.trim()) ||
+                         (track.folder && track.folder.trim()) ||
+                         'Tịnh Độ Pháp Âm';
+
             navigator.mediaSession.metadata = new MediaMetadata({
-                title: track.title || 'Bài giảng Phật Pháp',
-                artist: track.teacher || 'Thầy Thích Chân Hiếu',
-                album: track.subfolder || track.folder || 'Tịnh Độ Pháp Âm - Thích Chân Hiếu',
+                title: title,
+                artist: artist,
+                album: album,
                 artwork: artwork
             });
+
+            console.log('📱 Media Session Metadata:', { title, artist, album });
 
             // Set playback state
             navigator.mediaSession.playbackState = this.audio.paused ? 'paused' : 'playing';
@@ -1442,8 +1460,25 @@ class AudioPlayer {
     }
 
     // Setup all media session action handlers
+    // iOS-optimized: Always register handlers fresh
     setupMediaSessionActions() {
         if (!('mediaSession' in navigator)) return;
+
+        // iOS Safari: Clear existing handlers first
+        // This ensures clean state on each update
+        try {
+            const actionsToRegister = ['play', 'pause', 'previoustrack', 'nexttrack',
+                                       'seekbackward', 'seekforward', 'seekto', 'stop'];
+            actionsToRegister.forEach(action => {
+                try {
+                    navigator.mediaSession.setActionHandler(action, null);
+                } catch (e) {
+                    // Ignore if action not supported
+                }
+            });
+        } catch (error) {
+            console.debug('Could not clear action handlers:', error);
+        }
 
         const actionHandlers = [
             // Basic playback controls
@@ -2445,6 +2480,12 @@ class AudioPlayer {
             // Update media session playback state
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.playbackState = 'playing';
+
+                // iOS Safari: Re-set metadata on play to ensure it shows
+                // This fixes iOS not showing metadata sometimes
+                if (this.currentIndex >= 0 && this.flatPlaylist[this.currentIndex]) {
+                    this.updateMediaSession(this.flatPlaylist[this.currentIndex]);
+                }
             }
         });
         this.audio.addEventListener('pause', () => {
