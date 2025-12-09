@@ -65,7 +65,6 @@ class AudioPlayer {
         this.mobileRepeatValue = document.getElementById('mobileRepeatValue');
         this.mobileSpeedValue = document.getElementById('mobileSpeedValue');
         this.mobileTimerValue = document.getElementById('mobileTimerValue');
-        this.quickScrollBtn = document.getElementById('quickScrollBtn');
         this.miniPrevBtn = document.getElementById('miniPrevBtn');
         this.miniPlayBtn = document.getElementById('miniPlayBtn');
         this.miniNextBtn = document.getElementById('miniNextBtn');
@@ -1162,12 +1161,8 @@ class AudioPlayer {
         });
 
         if (this.currentIndex === -1) {
-            if (this.quickScrollBtn) this.quickScrollBtn.classList.remove('show');
             return;
         }
-
-        // Show quick scroll button
-        if (this.quickScrollBtn) this.quickScrollBtn.classList.add('show');
 
         // Add active class to matching items
         const activeElements = document.querySelectorAll(`[data-index="${this.currentIndex}"]`);
@@ -1186,136 +1181,6 @@ class AudioPlayer {
         });
     }
 
-    // ===== Navigate to Current Playing Track's Subfolder =====
-    // Navigate đến subfolder chứa bài đang phát trong tab Thư viện
-    navigateToCurrentTrack() {
-        if (this.currentIndex === -1) {
-            console.log('Chưa có bài nào đang phát');
-            return false;
-        }
-
-        // Get current playing track info
-        const currentTrack = this.flatPlaylist[this.currentIndex];
-        if (!currentTrack) {
-            console.log('Không tìm thấy thông tin bài đang phát');
-            return false;
-        }
-
-        // Find folder index
-        const folderIndex = this.lectures.findIndex(f => f.folder === currentTrack.folder);
-        if (folderIndex === -1) {
-            console.log('Không tìm thấy folder:', currentTrack.folder);
-            return false;
-        }
-
-        // Find subfolder index
-        const folder = this.lectures[folderIndex];
-        const subfolderIndex = folder.subfolders.findIndex(sf => sf.name === currentTrack.subfolder);
-        if (subfolderIndex === -1) {
-            console.log('Không tìm thấy subfolder:', currentTrack.subfolder);
-            return false;
-        }
-
-        // Switch to "Thư viện" filter if not already
-        if (this.currentFilter !== 'all') {
-            this.currentFilter = 'all';
-            document.querySelectorAll('.filter-tab').forEach(tab => {
-                tab.classList.toggle('active', tab.dataset.filter === 'all');
-            });
-        }
-
-        // Navigate: folders → subfolders → lectures (subfolder items)
-        this.navigateToSubfolders(folderIndex);
-
-        // Wait for render, then navigate to lectures
-        setTimeout(() => {
-            this.navigateToLectures(subfolderIndex);
-
-            // Wait for lectures to render, then scroll
-            setTimeout(() => {
-                this.scrollToTrackInSidebar();
-            }, 100);
-        }, 100);
-
-        return true;
-    }
-
-    // ===== Scroll to Active Track in Sidebar =====
-    // Cuộn đến vị trí bài đang phát trong sidebar (sau khi đã navigate)
-    scrollToTrackInSidebar() {
-        if (this.currentIndex === -1) return;
-
-        // Find active track card in sidebar using data-index
-        const activeInSidebar = document.querySelector(`.playlist .track-card[data-index="${this.currentIndex}"]`);
-
-        if (activeInSidebar) {
-            // Get the scroll container
-            const scrollContainer = activeInSidebar.closest('.playlist');
-
-            if (scrollContainer) {
-                // Calculate scroll position to center the element
-                const containerRect = scrollContainer.getBoundingClientRect();
-                const elementRect = activeInSidebar.getBoundingClientRect();
-                const scrollTop = scrollContainer.scrollTop;
-                const targetScrollTop = scrollTop + (elementRect.top - containerRect.top) -
-                                       (containerRect.height / 2) + (elementRect.height / 2);
-
-                // Smooth scroll
-                scrollContainer.scrollTo({
-                    top: targetScrollTop,
-                    behavior: 'smooth'
-                });
-            } else {
-                // Fallback to scrollIntoView
-                activeInSidebar.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center',
-                    inline: 'nearest'
-                });
-            }
-
-            // Add highlight animation
-            activeInSidebar.style.transition = 'transform 0.4s ease, box-shadow 0.4s ease';
-            activeInSidebar.style.transform = 'scale(1.05)';
-            activeInSidebar.style.boxShadow = '0 6px 24px rgba(255, 149, 0, 0.6)';
-
-            setTimeout(() => {
-                activeInSidebar.style.transform = 'scale(1)';
-                activeInSidebar.style.boxShadow = '';
-            }, 500);
-        }
-    }
-
-    // ===== Quick Scroll to Active Track (Main Entry Point) =====
-    // Function được gọi khi click nút Quick Scroll
-    scrollToActiveTrack() {
-        if (this.currentIndex === -1) {
-            console.log('Chưa có bài nào đang phát');
-
-            if (this.errorMessage && this.errorText) {
-                this.errorText.textContent = 'Chưa có bài nào đang phát';
-                this.errorMessage.style.display = 'flex';
-                setTimeout(() => {
-                    this.errorMessage.style.display = 'none';
-                }, 2000);
-            }
-            return;
-        }
-
-        // Try to navigate to the track's subfolder in sidebar
-        const navigated = this.navigateToCurrentTrack();
-
-        if (!navigated) {
-            // If navigation failed, show error
-            if (this.errorMessage && this.errorText) {
-                this.errorText.textContent = 'Không thể điều hướng đến bài đang phát';
-                this.errorMessage.style.display = 'flex';
-                setTimeout(() => {
-                    this.errorMessage.style.display = 'none';
-                }, 2000);
-            }
-        }
-    }
 
     // ===== Play/Pause Toggle =====
     togglePlay() {
@@ -2717,10 +2582,6 @@ class AudioPlayer {
         }
 
         // Quick Scroll Button
-        if (this.quickScrollBtn) {
-            this.quickScrollBtn.addEventListener('click', () => this.scrollToActiveTrack());
-        }
-
         if (this.miniPrevBtn) {
             this.miniPrevBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
