@@ -1525,7 +1525,7 @@ class AudioPlayer {
     // ===== Mini Player Functions =====
     updateMiniPlayer(track) {
         if (this.miniTrackTitle) {
-            this.miniTrackTitle.textContent = track.title || 'Chọn bài giảng';
+            this.updateMiniPlayerTitle(track.title || 'Chọn bài giảng');
         }
         // Update duration if available, otherwise it will be updated by loadedmetadata event
         if (this.miniDuration) {
@@ -1535,6 +1535,52 @@ class AudioPlayer {
                 this.miniDuration.textContent = '0:00';
             }
         }
+    }
+
+    // ===== Update Mini Player Title with Scrolling Effect =====
+    updateMiniPlayerTitle(title) {
+        if (!this.miniTrackTitle) return;
+
+        // Reset previous state
+        this.miniTrackTitle.classList.remove('scrolling');
+        this.miniTrackTitle.innerHTML = '';
+        this.miniTrackTitle.style.removeProperty('--scroll-distance');
+        
+        // Set initial text to measure
+        this.miniTrackTitle.textContent = title;
+
+        // Use requestAnimationFrame to ensure DOM is updated
+        requestAnimationFrame(() => {
+            // Create a temporary element to measure text width
+            const tempSpan = document.createElement('span');
+            tempSpan.style.visibility = 'hidden';
+            tempSpan.style.position = 'absolute';
+            tempSpan.style.fontSize = window.getComputedStyle(this.miniTrackTitle).fontSize;
+            tempSpan.style.fontWeight = window.getComputedStyle(this.miniTrackTitle).fontWeight;
+            tempSpan.style.fontFamily = window.getComputedStyle(this.miniTrackTitle).fontFamily;
+            tempSpan.style.whiteSpace = 'nowrap';
+            tempSpan.textContent = title;
+            document.body.appendChild(tempSpan);
+
+            const textWidth = tempSpan.offsetWidth;
+            document.body.removeChild(tempSpan);
+
+            // Get container width (mini player info area)
+            const containerWidth = this.miniTrackTitle.offsetWidth;
+
+            // If text is longer than container (with some margin), apply scrolling effect
+            if (textWidth > (containerWidth - 10) && containerWidth > 0) {
+                // Calculate how much we need to scroll to show the hidden part
+                const scrollDistance = -(textWidth - containerWidth + 20); // +20 for some padding
+                
+                // Set CSS custom property for scroll distance
+                this.miniTrackTitle.style.setProperty('--scroll-distance', `${scrollDistance}px`);
+                
+                this.miniTrackTitle.classList.add('scrolling');
+                this.miniTrackTitle.innerHTML = `<span class="title-text">${title}</span>`;
+            }
+            // If text fits, keep the normal display (already set above)
+        });
     }
 
     // ===== Media Session API for Lock Screen & Background Playback =====
@@ -1754,7 +1800,7 @@ class AudioPlayer {
         this.trackTitle.textContent = 'Chọn bài giảng để phát';
         this.trackFolder.textContent = '---';
         if (this.miniTrackTitle) {
-            this.miniTrackTitle.textContent = 'Chọn bài giảng';
+            this.updateMiniPlayerTitle('Chọn bài giảng');
         }
     }
 
@@ -2634,7 +2680,7 @@ class AudioPlayer {
             // Update mini player title on play (mobile fix)
             if (this.miniTrackTitle && this.currentIndex >= 0 && this.currentIndex < this.flatPlaylist.length) {
                 const track = this.flatPlaylist[this.currentIndex];
-                this.miniTrackTitle.textContent = track.title || 'Chọn bài giảng';
+                this.updateMiniPlayerTitle(track.title || 'Chọn bài giảng');
             }
         });
         this.audio.addEventListener('pause', () => {
@@ -2676,7 +2722,7 @@ class AudioPlayer {
             // Update mini player title when metadata is loaded (mobile fix)
             if (this.miniTrackTitle && this.currentIndex >= 0 && this.currentIndex < this.flatPlaylist.length) {
                 const track = this.flatPlaylist[this.currentIndex];
-                this.miniTrackTitle.textContent = track.title;
+                this.updateMiniPlayerTitle(track.title);
             }
         });
 
@@ -2990,6 +3036,15 @@ class AudioPlayer {
         // Window resize handler - switch between mobile and desktop views
         window.addEventListener('resize', () => {
             this.handleResponsiveLayout();
+            // Recalculate mini player title scrolling on resize
+            if (this.miniTrackTitle && this.currentIndex >= 0) {
+                const track = this.flatPlaylist[this.currentIndex];
+                if (track) {
+                    setTimeout(() => {
+                        this.updateMiniPlayerTitle(track.title);
+                    }, 100); // Small delay to ensure layout is updated
+                }
+            }
         });
     }
 

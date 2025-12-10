@@ -2837,6 +2837,51 @@ kbd {
     overflow: hidden;
     text-overflow: ellipsis;
     margin-bottom: 0.15rem;
+    position: relative;
+}
+
+.mini-track-title.scrolling {
+    text-overflow: unset;
+}
+
+.mini-track-title.scrolling .title-text {
+    display: inline-block;
+    animation: marquee-scroll 12s ease-in-out infinite;
+    animation-delay: 2s; /* Wait 2 seconds before starting */
+    white-space: nowrap;
+}
+
+.mini-track-title.scrolling .title-text:hover {
+    animation-play-state: paused;
+}
+
+/* Fallback animation for browsers that don't support CSS custom properties */
+@supports not (--scroll-distance: 0px) {
+    @keyframes marquee-scroll {
+        0% { transform: translateX(0); }
+        35% { transform: translateX(0); }
+        55% { transform: translateX(-50%); }
+        85% { transform: translateX(-50%); }
+        100% { transform: translateX(0); }
+    }
+}
+
+@keyframes marquee-scroll {
+    0% {
+        transform: translateX(0); /* Start at beginning */
+    }
+    35% {
+        transform: translateX(0); /* Stay at beginning longer to read */
+    }
+    55% {
+        transform: translateX(var(--scroll-distance)); /* Move to show hidden part */
+    }
+    85% {
+        transform: translateX(var(--scroll-distance)); /* Stay at end longer to read */
+    }
+    100% {
+        transform: translateX(0); /* Return to beginning smoothly */
+    }
 }
 
 .mini-track-time {
@@ -3120,6 +3165,10 @@ kbd {
 
     .mini-track-title {
         font-size: 0.85rem;
+    }
+
+    .mini-track-title.scrolling .title-text {
+        animation-duration: 15s; /* Much slower on mobile for better readability */
     }
 
     .mini-track-time {
