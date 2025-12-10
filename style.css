@@ -3220,7 +3220,18 @@ kbd {
             rgba(255, 149, 0, 0.05) 100%);
     border: 1px solid rgba(255, 149, 0, 0.3);
     border-radius: 12px;
-    animation: fadeIn 0.3s ease;
+    animation: fadeInFast 0.15s ease-out;
+}
+
+@keyframes fadeInFast {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .now-playing-header {

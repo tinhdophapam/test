@@ -134,6 +134,9 @@ class AudioPlayer {
         this.initializeDefaultView();
         this.initSleepTimer();
         this.initBookmarks();
+        
+        // Hide Now Playing section initially if no track is playing
+        this.hideNowPlayingIfNeeded();
     }
 
     // ===== Sleep Timer =====
@@ -1138,10 +1141,17 @@ class AudioPlayer {
         // Reset backup URL flag when playing a new track
         this.usingBackupUrl = false;
 
-        this.audio.src = track.url;
+        // Update UI immediately for better UX
         this.trackTitle.textContent = track.title;
         this.trackFolder.textContent = `${track.folder} • ${track.subfolder}`;
+        
+        // Update Now Playing section immediately
+        this.updateNowPlaying(track);
+        
+        // Update mini player immediately
+        this.updateMiniPlayer(track);
 
+        this.audio.src = track.url;
         this.audio.play().catch(error => {
             this.showError('Không thể phát audio: ' + error.message);
         });
@@ -1154,9 +1164,6 @@ class AudioPlayer {
         this.saveState();
         this.updateBookmarkButton();
 
-        // Update Now Playing section
-        this.updateNowPlaying(track);
-
         // Start tracking listen time
         this.sessionStartTime = Date.now();
 
@@ -1164,8 +1171,6 @@ class AudioPlayer {
         const albumArt = document.querySelector('.album-art-inner');
         if (albumArt) albumArt.classList.add('playing');
 
-        // Update mini player
-        this.updateMiniPlayer(track);
         this.showMiniPlayer();
 
         // Update Media Session API for background playback
@@ -3354,9 +3359,22 @@ class AudioPlayer {
     // ===== Update Now Playing =====
     updateNowPlaying(track) {
         if (this.nowPlayingSection && this.nowPlayingTitle && this.nowPlayingFolder) {
+            // Show section immediately
             this.nowPlayingSection.style.display = 'block';
+            
+            // Update content immediately
             this.nowPlayingTitle.textContent = track.title;
             this.nowPlayingFolder.textContent = `${track.folder} › ${track.subfolder}`;
+            
+            // Force reflow to ensure immediate display
+            this.nowPlayingSection.offsetHeight;
+        }
+    }
+
+    // ===== Hide Now Playing If No Track =====
+    hideNowPlayingIfNeeded() {
+        if (this.nowPlayingSection && this.currentIndex === -1) {
+            this.nowPlayingSection.style.display = 'none';
         }
     }
 
