@@ -1382,10 +1382,15 @@ class AudioPlayer {
     // ===== Mini Player Functions =====
     updateMiniPlayer(track) {
         if (this.miniTrackTitle) {
-            this.miniTrackTitle.textContent = track.title;
+            this.miniTrackTitle.textContent = track.title || 'Chọn bài giảng';
         }
-        if (this.miniDuration && this.audio.duration) {
-            this.miniDuration.textContent = this.formatTime(this.audio.duration);
+        // Update duration if available, otherwise it will be updated by loadedmetadata event
+        if (this.miniDuration) {
+            if (this.audio.duration && !isNaN(this.audio.duration)) {
+                this.miniDuration.textContent = this.formatTime(this.audio.duration);
+            } else {
+                this.miniDuration.textContent = '0:00';
+            }
         }
     }
 
@@ -2460,6 +2465,10 @@ class AudioPlayer {
                     this.audio.addEventListener('loadedmetadata', () => {
                         this.audio.currentTime = state.currentTime || 0;
                         this.updateProgress();
+                        // Ensure mini player is updated on mobile
+                        if (window.innerWidth <= 968) {
+                            this.updateMiniPlayer(track);
+                        }
                     }, { once: true });
                 }
             } catch (e) {
@@ -2486,6 +2495,12 @@ class AudioPlayer {
                 if (this.currentIndex >= 0 && this.flatPlaylist[this.currentIndex]) {
                     this.updateMediaSession(this.flatPlaylist[this.currentIndex]);
                 }
+            }
+
+            // Update mini player title on play (mobile fix)
+            if (this.miniTrackTitle && this.currentIndex >= 0 && this.currentIndex < this.flatPlaylist.length) {
+                const track = this.flatPlaylist[this.currentIndex];
+                this.miniTrackTitle.textContent = track.title || 'Chọn bài giảng';
             }
         });
         this.audio.addEventListener('pause', () => {
@@ -2523,6 +2538,11 @@ class AudioPlayer {
             this.durationEl.textContent = this.formatTime(this.audio.duration);
             if (this.miniDuration) {
                 this.miniDuration.textContent = this.formatTime(this.audio.duration);
+            }
+            // Update mini player title when metadata is loaded (mobile fix)
+            if (this.miniTrackTitle && this.currentIndex >= 0 && this.currentIndex < this.flatPlaylist.length) {
+                const track = this.flatPlaylist[this.currentIndex];
+                this.miniTrackTitle.textContent = track.title;
             }
         });
 
